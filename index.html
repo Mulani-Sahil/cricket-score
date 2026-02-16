@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Scoreboard - Full Match</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏏 Cricket Scoreboard</h1>
+            <p>Complete Match Management System</p>
+        </div>
+
+        <!-- SETUP SCREEN -->
+        <div class="screen active" id="setupScreen">
+            <h2>Match Setup</h2>
+            <div class="form-group">
+                <label for="team1Name">Team 1 Name</label>
+                <input type="text" id="team1Name" placeholder="Enter Team 1 name" required>
+            </div>
+            <div class="form-group">
+                <label for="team2Name">Team 2 Name</label>
+                <input type="text" id="team2Name" placeholder="Enter Team 2 name" required>
+            </div>
+            <div class="form-group">
+                <label for="oversPerInnings">Number of Overs Per Innings</label>
+                <input type="number" id="oversPerInnings" placeholder="Enter overs (e.g., 5)" min="1" required>
+            </div>
+            <button class="btn btn-primary btn-center" id="startMatchBtn">Start Match</button>
+        </div>
+
+        <!-- TOSS SCREEN -->
+        <div class="screen" id="tossScreen">
+            <h2>Toss Time</h2>
+            
+            <div id="tossTeamSelection">
+                <p style="text-align: center; font-size: 1.2em; margin-bottom: 20px; color: #333;">
+                    Which team will call the toss?
+                </p>
+                <div class="toss-options">
+                    <div class="toss-btn" id="selectTeam1">
+                        <h3 id="tossTeam1Name">Team 1</h3>
+                    </div>
+                    <div class="toss-btn" id="selectTeam2">
+                        <h3 id="tossTeam2Name">Team 2</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tossCallSelection" class="hidden">
+                <p style="text-align: center; font-size: 1.2em; margin-bottom: 20px; color: #333;">
+                    <span id="callingTeamName"></span> calls:
+                </p>
+                <div class="toss-options">
+                    <div class="toss-btn" id="callHeads">
+                        <h3>🪙 Heads</h3>
+                    </div>
+                    <div class="toss-btn" id="callTails">
+                        <h3>🪙 Tails</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tossResultSection" class="hidden">
+                <div class="toss-result">
+                    <h3 id="tossOutcome">It's Heads!</h3>
+                    <p id="tossWinner">Team 1 won the toss!</p>
+                </div>
+                
+                <p style="text-align: center; font-size: 1.2em; margin: 20px 0; color: #333;">
+                    <span id="winningTeamName"></span> chooses to:
+                </p>
+                <div class="choice-buttons">
+                    <button class="btn btn-success" id="chooseBat">🏏 Bat First</button>
+                    <button class="btn btn-warning" id="chooseBowl">⚾ Bowl First</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LIVE MATCH SCREEN -->
+        <div class="screen" id="liveMatchScreen">
+            <div class="innings-info" id="inningsInfo">First Innings</div>
+
+            <div class="target-display hidden" id="targetDisplay">
+                Target: <span id="targetRuns">0</span> runs in <span id="targetBalls">0</span> balls
+            </div>
+
+            <div class="scoreboard">
+                <div class="score-display">
+                    <div class="team-score" id="team1Score">
+                        <div class="team-name">
+                            <span id="team1DisplayName">Team 1</span>
+                            <span class="batting-badge hidden" id="team1Badge">Batting</span>
+                        </div>
+                        <div class="score-big" id="team1Runs">0/0</div>
+                        <div class="score-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Overs</span>
+                                <span class="detail-value" id="team1Overs">0.0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Balls</span>
+                                <span class="detail-value" id="team1Balls">0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Remaining</span>
+                                <span class="detail-value" id="team1Remaining">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="team-score" id="team2Score">
+                        <div class="team-name">
+                            <span id="team2DisplayName">Team 2</span>
+                            <span class="batting-badge hidden" id="team2Badge">Batting</span>
+                        </div>
+                        <div class="score-big" id="team2Runs">0/0</div>
+                        <div class="score-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Overs</span>
+                                <span class="detail-value" id="team2Overs">0.0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Balls</span>
+                                <span class="detail-value" id="team2Balls">0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Remaining</span>
+                                <span class="detail-value" id="team2Remaining">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="ball-history">
+                <h3>Current Over</h3>
+                <div class="balls-container" id="ballsContainer">
+                    <span class="empty-balls">No balls bowled yet</span>
+                </div>
+            </div>
+
+            <div class="ball-controls" id="ballControls">
+                <h3>Record Ball</h3>
+                
+                <div class="runs-selector">
+                    <div class="run-btn" data-runs="0">0</div>
+                    <div class="run-btn" data-runs="1">1</div>
+                    <div class="run-btn" data-runs="2">2</div>
+                    <div class="run-btn" data-runs="3">3</div>
+                    <div class="run-btn" data-runs="4">4</div>
+                    <div class="run-btn" data-runs="6">6</div>
+                </div>
+
+                <div class="wicket-section">
+                    <input type="checkbox" id="wicketCheck">
+                    <label for="wicketCheck">Wicket Fallen</label>
+                </div>
+
+                <button class="btn btn-success btn-center" id="recordBallBtn">Record Ball</button>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-warning" id="endInningsBtn">End Innings</button>
+                <button class="btn btn-danger" id="resetMatchBtn">Reset Match</button>
+            </div>
+        </div>
+
+        <!-- RESULT SCREEN -->
+        <div class="screen" id="resultScreen">
+            <div class="result-section">
+                <h2>🏆 Match Result</h2>
+                <p id="winnerText">-</p>
+                <div class="match-summary" id="matchSummary"></div>
+            </div>
+            <button class="btn btn-primary btn-center" id="newMatchBtn">Start New Match</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
