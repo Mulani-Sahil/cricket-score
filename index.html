@@ -1,188 +1,249 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cricket Scoreboard - Full Match</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cricket Scoreboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏏 Cricket Scoreboard</h1>
-            <p>Complete Match Management System</p>
+<div class="wrap">
+  <header class="site-header">
+    <div class="logo">🏏 Cricket</div>
+    <div class="sub">Live Scoreboard · Match Manager</div>
+  </header>
+
+  <!-- ═══ SETUP ═══ -->
+  <div class="screen active" id="setupScreen">
+    <div class="card">
+      <div class="card-title">Match Setup</div>
+      <div class="form-row">
+        <div class="field">
+          <label>Team 1 Name</label>
+          <input id="team1Name" type="text" placeholder="e.g. Mumbai Indians">
         </div>
-
-        <!-- SETUP SCREEN -->
-        <div class="screen active" id="setupScreen">
-            <h2>Match Setup</h2>
-            <div class="form-group">
-                <label for="team1Name">Team 1 Name</label>
-                <input type="text" id="team1Name" placeholder="Enter Team 1 name" required>
-            </div>
-            <div class="form-group">
-                <label for="team2Name">Team 2 Name</label>
-                <input type="text" id="team2Name" placeholder="Enter Team 2 name" required>
-            </div>
-            <div class="form-group">
-                <label for="oversPerInnings">Number of Overs Per Innings</label>
-                <input type="number" id="oversPerInnings" placeholder="Enter overs (e.g., 5)" min="1" required>
-            </div>
-            <button class="btn btn-primary btn-center" id="startMatchBtn">Start Match</button>
+        <div class="field">
+          <label>Team 2 Name</label>
+          <input id="team2Name" type="text" placeholder="e.g. Chennai Super Kings">
         </div>
-
-        <!-- TOSS SCREEN -->
-        <div class="screen" id="tossScreen">
-            <h2>Toss Time</h2>
-            
-            <div id="tossTeamSelection">
-                <p style="text-align: center; font-size: 1.2em; margin-bottom: 20px; color: #333;">
-                    Which team will call the toss?
-                </p>
-                <div class="toss-options">
-                    <div class="toss-btn" id="selectTeam1">
-                        <h3 id="tossTeam1Name">Team 1</h3>
-                    </div>
-                    <div class="toss-btn" id="selectTeam2">
-                        <h3 id="tossTeam2Name">Team 2</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tossCallSelection" class="hidden">
-                <p style="text-align: center; font-size: 1.2em; margin-bottom: 20px; color: #333;">
-                    <span id="callingTeamName"></span> calls:
-                </p>
-                <div class="toss-options">
-                    <div class="toss-btn" id="callHeads">
-                        <h3>🪙 Heads</h3>
-                    </div>
-                    <div class="toss-btn" id="callTails">
-                        <h3>🪙 Tails</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tossResultSection" class="hidden">
-                <div class="toss-result">
-                    <h3 id="tossOutcome">It's Heads!</h3>
-                    <p id="tossWinner">Team 1 won the toss!</p>
-                </div>
-                
-                <p style="text-align: center; font-size: 1.2em; margin: 20px 0; color: #333;">
-                    <span id="winningTeamName"></span> chooses to:
-                </p>
-                <div class="choice-buttons">
-                    <button class="btn btn-success" id="chooseBat">🏏 Bat First</button>
-                    <button class="btn btn-warning" id="chooseBowl">⚾ Bowl First</button>
-                </div>
-            </div>
+        <div class="field full">
+          <label>Overs Per Innings</label>
+          <input id="oversPerInnings" type="number" min="1" placeholder="e.g. 20">
         </div>
+      </div>
+      <button class="btn btn-gold btn-block" id="startMatchBtn">Start Match →</button>
+    </div>
+  </div>
 
-        <!-- LIVE MATCH SCREEN -->
-        <div class="screen" id="liveMatchScreen">
-            <div class="innings-info" id="inningsInfo">First Innings</div>
-
-            <div class="target-display hidden" id="targetDisplay">
-                Target: <span id="targetRuns">0</span> runs in <span id="targetBalls">0</span> balls
-            </div>
-
-            <div class="scoreboard">
-                <div class="score-display">
-                    <div class="team-score" id="team1Score">
-                        <div class="team-name">
-                            <span id="team1DisplayName">Team 1</span>
-                            <span class="batting-badge hidden" id="team1Badge">Batting</span>
-                        </div>
-                        <div class="score-big" id="team1Runs">0/0</div>
-                        <div class="score-details">
-                            <div class="detail-item">
-                                <span class="detail-label">Overs</span>
-                                <span class="detail-value" id="team1Overs">0.0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Balls</span>
-                                <span class="detail-value" id="team1Balls">0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Remaining</span>
-                                <span class="detail-value" id="team1Remaining">-</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="team-score" id="team2Score">
-                        <div class="team-name">
-                            <span id="team2DisplayName">Team 2</span>
-                            <span class="batting-badge hidden" id="team2Badge">Batting</span>
-                        </div>
-                        <div class="score-big" id="team2Runs">0/0</div>
-                        <div class="score-details">
-                            <div class="detail-item">
-                                <span class="detail-label">Overs</span>
-                                <span class="detail-value" id="team2Overs">0.0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Balls</span>
-                                <span class="detail-value" id="team2Balls">0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Remaining</span>
-                                <span class="detail-value" id="team2Remaining">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-                </div>
-            </div>
-
-            <div class="ball-history">
-                <h3>Current Over</h3>
-                <div class="balls-container" id="ballsContainer">
-                    <span class="empty-balls">No balls bowled yet</span>
-                </div>
-            </div>
-
-            <div class="ball-controls" id="ballControls">
-                <h3>Record Ball</h3>
-                
-                <div class="runs-selector">
-                    <div class="run-btn" data-runs="0">0</div>
-                    <div class="run-btn" data-runs="1">1</div>
-                    <div class="run-btn" data-runs="2">2</div>
-                    <div class="run-btn" data-runs="3">3</div>
-                    <div class="run-btn" data-runs="4">4</div>
-                    <div class="run-btn" data-runs="6">6</div>
-                </div>
-
-                <div class="wicket-section">
-                    <input type="checkbox" id="wicketCheck">
-                    <label for="wicketCheck">Wicket Fallen</label>
-                </div>
-
-                <button class="btn btn-success btn-center" id="recordBallBtn">Record Ball</button>
-            </div>
-
-            <div class="action-buttons">
-                <button class="btn btn-warning" id="endInningsBtn">End Innings</button>
-                <button class="btn btn-danger" id="resetMatchBtn">Reset Match</button>
-            </div>
+  <!-- ═══ TOSS ═══ -->
+  <div class="screen" id="tossScreen">
+    <div class="card" id="tossTeamSel">
+      <div class="card-title">Who calls the toss?</div>
+      <div class="toss-grid">
+        <div class="toss-card" id="selT1">
+          <div class="icon">🏏</div>
+          <div class="name" id="tossT1Name">Team 1</div>
         </div>
-
-        <!-- RESULT SCREEN -->
-        <div class="screen" id="resultScreen">
-            <div class="result-section">
-                <h2>🏆 Match Result</h2>
-                <p id="winnerText">-</p>
-                <div class="match-summary" id="matchSummary"></div>
-            </div>
-            <button class="btn btn-primary btn-center" id="newMatchBtn">Start New Match</button>
+        <div class="toss-card" id="selT2">
+          <div class="icon">🏏</div>
+          <div class="name" id="tossT2Name">Team 2</div>
         </div>
+      </div>
     </div>
 
-    <script src="script.js"></script>
+    <div class="card hidden" id="tossCallSel">
+      <div class="card-title"><span id="callingName">Team</span> — Call It!</div>
+      <div class="toss-grid">
+        <div class="toss-card" id="callHeads">
+          <div class="icon">🪙</div>
+          <div class="name">Heads</div>
+        </div>
+        <div class="toss-card" id="callTails">
+          <div class="icon">🪙</div>
+          <div class="name">Tails</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="tossResult">
+      <div class="toss-result-banner">
+        <div class="outcome" id="tossOutcomeText"></div>
+        <div class="winner" id="tossWinnerText"></div>
+      </div>
+      <div class="card-title"><span id="tossWinnerChooseName"></span> — Choose:</div>
+      <div style="display:flex;gap:12px;">
+        <button class="btn btn-green" style="flex:1" id="chooseBat">🏏 Bat First</button>
+        <button class="btn btn-sky"   style="flex:1" id="chooseBowl">⚾ Bowl First</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LIVE MATCH ═══ -->
+  <div class="screen" id="liveScreen">
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <div class="innings-badge">
+        <span class="dot"></span>
+        <span id="inningsBadge">First Innings</span>
+      </div>
+    </div>
+
+    <div class="target-strip" id="targetStrip">
+      Need <strong id="tgtRuns">—</strong> runs from <strong id="tgtBalls">—</strong> balls
+    </div>
+
+    <div class="score-grid" id="scoreGrid">
+      <div class="score-card" id="scoreCard1">
+        <div class="score-team">
+          <div class="score-team-name" id="s1Name">Team 1</div>
+          <div class="bat-chip">Batting</div>
+        </div>
+        <div class="score-runs" id="s1Score">0/0</div>
+        <div class="score-meta">
+          <div class="meta-item">
+            <span class="meta-label">Overs</span>
+            <span class="meta-val" id="s1Overs">0.0</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Extras</span>
+            <span class="meta-val" id="s1Extras">0</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Remaining</span>
+            <span class="meta-val" id="s1Remaining">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="score-card" id="scoreCard2">
+        <div class="score-team">
+          <div class="score-team-name" id="s2Name">Team 2</div>
+          <div class="bat-chip">Batting</div>
+        </div>
+        <div class="score-runs" id="s2Score">0/0</div>
+        <div class="score-meta">
+          <div class="meta-item">
+            <span class="meta-label">Overs</span>
+            <span class="meta-val" id="s2Overs">0.0</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Extras</span>
+            <span class="meta-val" id="s2Extras">0</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Remaining</span>
+            <span class="meta-val" id="s2Remaining">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="over-progress">
+      <div class="over-fill" id="overFill" style="width:0%"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="over-label">Current Over</div>
+      <div class="balls-row" id="ballsRow">
+        <span class="no-balls-msg">No balls bowled yet</span>
+      </div>
+    </div>
+
+    <!-- Record Panel -->
+    <div class="record-panel">
+      <div class="record-panel-title">Record Delivery</div>
+
+      <!-- Delivery Type -->
+      <div class="delivery-row">
+        <button class="del-btn active-normal" id="delNormal" data-type="normal">
+          <span class="del-icon">🏏</span> Normal
+        </button>
+        <button class="del-btn" id="delWide" data-type="wide">
+          <span class="del-icon">↔️</span> Wide
+        </button>
+        <button class="del-btn" id="delNoball" data-type="noball">
+          <span class="del-icon">🚫</span> No Ball
+        </button>
+      </div>
+
+      <!-- Delivery info -->
+      <div class="delivery-info" id="wideInfo">
+        <strong>Wide:</strong> 1 penalty run added. Ball is <strong>not counted</strong> toward over. Wicket cannot fall on a wide.
+      </div>
+      <div class="delivery-info" id="noballInfo">
+        <strong>No Ball:</strong> 1 penalty run added. Ball is <strong>not counted</strong> toward over. Batsman <strong>cannot be dismissed</strong> (except run out).
+      </div>
+
+      <!-- Runs -->
+      <div class="record-panel-title" style="margin-top:4px;">Runs Scored off Bat</div>
+      <div class="runs-grid">
+        <div class="run-chip" data-r="0">0</div>
+        <div class="run-chip" data-r="1">1</div>
+        <div class="run-chip" data-r="2">2</div>
+        <div class="run-chip" data-r="3">3</div>
+        <div class="run-chip" data-r="4">4</div>
+        <div class="run-chip" data-r="5">5</div>
+        <div class="run-chip" data-r="6">6</div>
+      </div>
+
+      <!-- Wicket -->
+      <div class="wicket-row" id="wicketRow">
+        <div class="wicket-toggle" id="wicketToggle"></div>
+        <span class="wicket-label">⚡ Wicket Fallen</span>
+        <span class="wicket-note" id="wicketNote"></span>
+      </div>
+
+      <button class="btn btn-gold record-btn" id="recordBtn">Record Ball</button>
+    </div>
+
+    <div class="bottom-actions">
+      <button class="btn btn-ghost" id="endInningsBtn">End Innings</button>
+      <button class="btn btn-red"   id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- ═══ RESULT ═══ -->
+  <div class="screen" id="resultScreen">
+    <div class="result-hero">
+      <div class="result-trophy">🏆</div>
+      <div class="result-winner" id="resultWinner">—</div>
+      <div style="color:var(--gray);font-size:0.9rem;">Match Complete</div>
+    </div>
+    <div class="result-summary">
+      <div class="result-card">
+        <div class="rc-name" id="rc1Name">Team 1</div>
+        <div class="rc-score" id="rc1Score">—</div>
+        <div class="rc-detail" id="rc1Detail">—</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-name" id="rc2Name">Team 2</div>
+        <div class="rc-score" id="rc2Score">—</div>
+        <div class="rc-detail" id="rc2Detail">—</div>
+      </div>
+    </div>
+    <button class="btn btn-gold btn-block mt16" id="newMatchBtn">New Match →</button>
+  </div>
+
+</div>
+
+<!-- ═══ COIN FLIP OVERLAY ═══ -->
+<div class="coin-overlay" id="coinOverlay">
+  <div class="flip-msg" id="flipMsg">Flipping the coin...</div>
+  <br>
+  <div class="coin-wrap">
+    <div class="coin" id="coin">
+      <div class="coin-face coin-heads">👑</div>
+      <div class="coin-face coin-tails">⚡</div>
+    </div>
+    <div class="coin-shadow"></div>
+  </div>
+  <div class="coin-label" id="coinResultLabel"></div>
+  <div class="coin-sub"   id="coinResultSub"></div>
+  <button class="btn btn-gold coin-continue" id="coinContinueBtn">Continue →</button>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
