@@ -6,15 +6,17 @@ const state = {
   team2: { name: '', runs: 0, wickets: 0, balls: 0, extras: 0, ballHistory: [] },
   oversPerInnings: 0,
   totalBalls: 0,
+  playersPerTeam: 11,  // default 11
+  maxWickets: 10,      // players - 1
   currentInnings: 1,
-  battingTeam: '',   // 'team1' | 'team2'
+  battingTeam: '',
   bowlingTeam: '',
   tossCallingTeam: '',
   tossWinner: '',
   tossCall: '',
   tossResult: '',
   selectedRuns: null,
-  deliveryType: 'normal', // 'normal' | 'wide' | 'noball'
+  deliveryType: 'normal',
   wicketChecked: false,
   matchEnded: false
 };
@@ -48,14 +50,19 @@ function bat() {
 $('startMatchBtn').addEventListener('click', () => {
   const n1 = $('team1Name').value.trim();
   const n2 = $('team2Name').value.trim();
+  const players = parseInt($('playersPerTeam').value);
   const ov = parseInt($('oversPerInnings').value);
 
   if (!n1) return alert('Please enter Team 1 name');
   if (!n2) return alert('Please enter Team 2 name');
+  if (!players || players < 2) return alert('Please enter at least 2 players per team');
+  if (players > 11) return alert('Maximum 11 players per team allowed');
   if (!ov || ov < 1) return alert('Please enter a valid number of overs');
 
   state.team1.name = n1;
   state.team2.name = n2;
+  state.playersPerTeam = players;
+  state.maxWickets = players - 1;   // last batsman can't bat alone
   state.oversPerInnings = ov;
   state.totalBalls = ov * 6;
 
@@ -65,7 +72,7 @@ $('startMatchBtn').addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════
-// TOSS SCREEN — Step 1: Select calling team
+// TOSS — Step 1: Select calling team
 // ═══════════════════════════════════════════════
 function selectTossTeam(t) {
   state.tossCallingTeam = t;
@@ -78,7 +85,7 @@ $('selT1').addEventListener('click', () => selectTossTeam('team1'));
 $('selT2').addEventListener('click', () => selectTossTeam('team2'));
 
 // ═══════════════════════════════════════════════
-// TOSS SCREEN — Step 2: Heads or Tails call
+// TOSS — Step 2: Heads or Tails
 // ═══════════════════════════════════════════════
 function doCall(call) {
   state.tossCall = call;
@@ -87,22 +94,18 @@ function doCall(call) {
     ? state.tossCallingTeam
     : (state.tossCallingTeam === 'team1' ? 'team2' : 'team1');
 
-  // Show coin flip overlay
   const overlay = $('coinOverlay');
   const coinEl  = $('coin');
 
-  // Reset state
   overlay.classList.remove('show-result');
   coinEl.className = 'coin';
   $('flipMsg').style.display = 'block';
   overlay.classList.add('active');
 
-  // Trigger flip animation after brief delay
   setTimeout(() => {
     coinEl.classList.add(state.tossResult === 'heads' ? 'result-heads' : 'result-tails');
   }, 100);
 
-  // After flip completes, reveal result
   setTimeout(() => {
     const winner = state[state.tossWinner].name;
     const res = state.tossResult.charAt(0).toUpperCase() + state.tossResult.slice(1);
@@ -117,7 +120,7 @@ $('callHeads').addEventListener('click', () => doCall('heads'));
 $('callTails').addEventListener('click', () => doCall('tails'));
 
 // ═══════════════════════════════════════════════
-// COIN OVERLAY — Continue button
+// COIN — Continue button
 // ═══════════════════════════════════════════════
 $('coinContinueBtn').addEventListener('click', () => {
   const overlay = $('coinOverlay');
@@ -134,7 +137,7 @@ $('coinContinueBtn').addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════
-// TOSS SCREEN — Step 3: Bat or Bowl choice
+// TOSS — Step 3: Bat or Bowl
 // ═══════════════════════════════════════════════
 $('chooseBat').addEventListener('click', () => {
   state.battingTeam = state.tossWinner;
@@ -165,20 +168,16 @@ function startLive() {
   $(id).addEventListener('click', () => {
     state.deliveryType = $(id).dataset.type;
 
-    // Update button styles
-    ['delNormal', 'delWide', 'delNoball'].forEach(b => {
-      $(b).classList.remove('active-normal', 'active-wide', 'active-noball');
-    });
+    ['delNormal', 'delWide', 'delNoball'].forEach(b =>
+      $(b).classList.remove('active-normal', 'active-wide', 'active-noball')
+    );
     const cls = state.deliveryType === 'normal' ? 'active-normal'
-              : state.deliveryType === 'wide'   ? 'active-wide'
-              : 'active-noball';
+              : state.deliveryType === 'wide'   ? 'active-wide' : 'active-noball';
     $(id).classList.add(cls);
 
-    // Show/hide info banners
     $('wideInfo').classList.toggle('show', state.deliveryType === 'wide');
     $('noballInfo').classList.toggle('show', state.deliveryType === 'noball');
 
-    // Wicket rules per delivery type
     const wicketRow = $('wicketRow');
     if (state.deliveryType === 'wide') {
       wicketRow.classList.add('disabled');
@@ -228,23 +227,16 @@ function recordBall() {
   const isNoball = state.deliveryType === 'noball';
   const isExtra  = isWide || isNoball;
 
-  // 1 penalty run for wide or no ball, plus any runs scored off bat
-  const penaltyRun = isExtra ? 1 : 0;
-  const totalRuns  = state.selectedRuns + penaltyRun;
-
-  // Wide and no-ball deliveries do NOT count toward the over
+  const penaltyRun   = isExtra ? 1 : 0;
+  const totalRuns    = state.selectedRuns + penaltyRun;
   const countsAsBall = !isExtra;
+  const isWicket     = state.wicketChecked && !isWide;
 
-  // Wicket not allowed on a wide
-  const isWicket = state.wicketChecked && !isWide;
+  team.runs   += totalRuns;
+  team.extras += penaltyRun;
+  if (isWicket)     team.wickets += 1;
+  if (countsAsBall) team.balls   += 1;
 
-  // Update team stats
-  team.runs    += totalRuns;
-  team.extras  += penaltyRun;
-  if (isWicket)      team.wickets += 1;
-  if (countsAsBall)  team.balls   += 1;
-
-  // Build ball label + class for history display
   let ballLabel, ballClass;
   if (isWide) {
     ballLabel = state.selectedRuns > 0 ? `Wd+${state.selectedRuns}` : 'Wd';
@@ -256,17 +248,13 @@ function recordBall() {
     ballLabel = state.selectedRuns > 0 ? `W+${state.selectedRuns}` : 'W';
     ballClass = 'wicket';
   } else if (state.selectedRuns === 0) {
-    ballLabel = '•';
-    ballClass = 'dot';
+    ballLabel = '•'; ballClass = 'dot';
   } else if (state.selectedRuns === 6) {
-    ballLabel = '6';
-    ballClass = 'six';
+    ballLabel = '6'; ballClass = 'six';
   } else if (state.selectedRuns === 4) {
-    ballLabel = '4';
-    ballClass = 'four';
+    ballLabel = '4'; ballClass = 'four';
   } else {
-    ballLabel = String(state.selectedRuns);
-    ballClass = 'runs';
+    ballLabel = String(state.selectedRuns); ballClass = 'runs';
   }
 
   team.ballHistory.push({ label: ballLabel, cls: ballClass, countsAsBall });
@@ -276,10 +264,10 @@ function recordBall() {
   state.selectedRuns  = null;
   state.wicketChecked = false;
   $('wicketRow').classList.remove('checked');
-
-  // Reset delivery type back to Normal
   state.deliveryType = 'normal';
-  ['delNormal', 'delWide', 'delNoball'].forEach(b => $(b).classList.remove('active-normal', 'active-wide', 'active-noball'));
+  ['delNormal', 'delWide', 'delNoball'].forEach(b =>
+    $(b).classList.remove('active-normal', 'active-wide', 'active-noball')
+  );
   $('delNormal').classList.add('active-normal');
   $('wideInfo').classList.remove('show');
   $('noballInfo').classList.remove('show');
@@ -287,19 +275,18 @@ function recordBall() {
   $('wicketNote').textContent = '';
 
   updateUI();
-
   if (checkInningsEnd()) return;
   if (state.currentInnings === 2) checkMatchEnd();
 }
 
 // ═══════════════════════════════════════════════
-// LIVE MATCH — Innings end check
+// Innings end check — uses dynamic maxWickets
 // ═══════════════════════════════════════════════
 function checkInningsEnd() {
   const team = bat();
-  if (team.wickets >= 10) {
+  if (team.wickets >= state.maxWickets) {
     $('recordBtn').disabled = true;
-    showToast(`${team.name} all out! End the innings to continue.`);
+    showToast(`${team.name} all out! (${state.maxWickets} wickets) End the innings.`);
     return true;
   }
   if (team.balls >= state.totalBalls) {
@@ -311,21 +298,18 @@ function checkInningsEnd() {
 }
 
 // ═══════════════════════════════════════════════
-// LIVE MATCH — Match end check (2nd innings)
+// Match end check (2nd innings)
 // ═══════════════════════════════════════════════
 function checkMatchEnd() {
   const chasers   = bat();
   const defenders = state.battingTeam === 'team1' ? state.team2 : state.team1;
-  if (chasers.runs > defenders.runs) {
-    showResult();
-  }
+  if (chasers.runs > defenders.runs) showResult();
 }
 
 // ═══════════════════════════════════════════════
-// LIVE MATCH — Update all UI elements
+// Update all UI elements
 // ═══════════════════════════════════════════════
 function updateUI() {
-  // Scores
   $('s1Score').textContent  = `${state.team1.runs}/${state.team1.wickets}`;
   $('s2Score').textContent  = `${state.team2.runs}/${state.team2.wickets}`;
   $('s1Overs').textContent  = toOvers(state.team1.balls);
@@ -333,7 +317,6 @@ function updateUI() {
   $('s1Extras').textContent = state.team1.extras;
   $('s2Extras').textContent = state.team2.extras;
 
-  // Remaining balls
   if (state.battingTeam === 'team1') {
     $('s1Remaining').textContent = remainingBalls(state.team1.balls);
     $('s2Remaining').textContent = '—';
@@ -342,11 +325,9 @@ function updateUI() {
     $('s1Remaining').textContent = '—';
   }
 
-  // Batting card highlight
   $('scoreCard1').classList.toggle('batting', state.battingTeam === 'team1');
   $('scoreCard2').classList.toggle('batting', state.battingTeam === 'team2');
 
-  // Innings label & target strip
   if (state.currentInnings === 1) {
     $('inningsBadge').textContent = 'First Innings';
     $('targetStrip').classList.remove('show');
@@ -355,21 +336,17 @@ function updateUI() {
     const def      = state.battingTeam === 'team1' ? state.team2 : state.team1;
     const chas     = bat();
     const runsNeed = (def.runs + 1) - chas.runs;
-    const ballsLeft = remainingBalls(chas.balls);
     $('tgtRuns').textContent  = runsNeed > 0 ? runsNeed : 0;
-    $('tgtBalls').textContent = ballsLeft;
+    $('tgtBalls').textContent = remainingBalls(chas.balls);
     $('targetStrip').classList.add('show');
   }
 
-  // Progress bar (based on legal balls bowled)
   const team = bat();
   $('overFill').style.width = Math.min(100, (team.balls / state.totalBalls) * 100) + '%';
 
-  // Ball history — show last 8 deliveries
   const container = $('ballsRow');
   container.innerHTML = '';
   const recent = team.ballHistory.slice(-8);
-
   if (recent.length === 0) {
     container.innerHTML = '<span class="no-balls-msg">No balls bowled yet</span>';
   } else {
@@ -383,11 +360,10 @@ function updateUI() {
 }
 
 // ═══════════════════════════════════════════════
-// LIVE MATCH — End innings button
+// End innings button
 // ═══════════════════════════════════════════════
 $('endInningsBtn').addEventListener('click', () => {
   if (state.currentInnings === 1) {
-    // Switch to second innings
     state.currentInnings = 2;
     const tmp = state.battingTeam;
     state.battingTeam = state.bowlingTeam;
@@ -400,15 +376,12 @@ $('endInningsBtn').addEventListener('click', () => {
   }
 });
 
-// ═══════════════════════════════════════════════
-// LIVE MATCH — Reset
-// ═══════════════════════════════════════════════
 $('resetBtn').addEventListener('click', () => {
   if (confirm('Reset the match? All data will be lost.')) location.reload();
 });
 
 // ═══════════════════════════════════════════════
-// RESULT SCREEN
+// Result screen — uses dynamic maxWickets for wickets-remaining calc
 // ═══════════════════════════════════════════════
 function showResult() {
   state.matchEnded = true;
@@ -420,18 +393,16 @@ function showResult() {
     const margin = t1.runs - t2.runs;
     winnerText = `${t1.name} won by ${margin} run${margin !== 1 ? 's' : ''}!`;
   } else if (t2.runs > t1.runs) {
-    const wkts = 10 - t2.wickets;
-    winnerText = `${t2.name} won by ${wkts} wicket${wkts !== 1 ? 's' : ''}!`;
+    const wktsLeft = state.maxWickets - t2.wickets;
+    winnerText = `${t2.name} won by ${wktsLeft} wicket${wktsLeft !== 1 ? 's' : ''}!`;
   } else {
     winnerText = 'Match Tied!';
   }
 
   $('resultWinner').textContent = winnerText;
-
   $('rc1Name').textContent   = t1.name;
   $('rc1Score').textContent  = `${t1.runs}/${t1.wickets}`;
   $('rc1Detail').textContent = `${toOvers(t1.balls)} overs · ${t1.extras} extras`;
-
   $('rc2Name').textContent   = t2.name;
   $('rc2Score').textContent  = `${t2.runs}/${t2.wickets}`;
   $('rc2Detail').textContent = `${toOvers(t2.balls)} overs · ${t2.extras} extras`;
@@ -442,32 +413,21 @@ function showResult() {
 $('newMatchBtn').addEventListener('click', () => location.reload());
 
 // ═══════════════════════════════════════════════
-// TOAST NOTIFICATION
+// Toast notification
 // ═══════════════════════════════════════════════
 function showToast(msg) {
   let t = document.querySelector('.toast');
   if (t) t.remove();
-
   t = document.createElement('div');
   t.className = 'toast';
   t.textContent = msg;
   t.style.cssText = `
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(232,184,75,0.15);
-    border: 1px solid rgba(232,184,75,0.4);
-    color: #e8b84b;
-    padding: 12px 24px;
-    border-radius: 30px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    z-index: 1000;
-    backdrop-filter: blur(10px);
-    animation: toastIn 0.3s ease both;
-    white-space: nowrap;
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+    background:rgba(232,184,75,0.15); border:1px solid rgba(232,184,75,0.4);
+    color:#e8b84b; padding:12px 24px; border-radius:30px; font-size:.9rem;
+    font-weight:600; z-index:1000; backdrop-filter:blur(10px);
+    animation:toastIn .3s ease both; white-space:nowrap;
   `;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  setTimeout(() => t.remove(), 3500);
 }
