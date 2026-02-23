@@ -1,591 +1,473 @@
-// ===========================
-// GAME STATE OBJECT
-// Store all match-related data
-// ===========================
-const matchState = {
-    // Team 1 data
-    team1: {
-        name: '',
-        runs: 0,
-        wickets: 0,
-        balls: 0,
-        ballHistory: []
-    },
-    // Team 2 data
-    team2: {
-        name: '',
-        runs: 0,
-        wickets: 0,
-        balls: 0,
-        ballHistory: []
-    },
-    
-    // Match settings
-    oversPerInnings: 0,
-    totalBalls: 0,
-    
-    // Match state
-    currentInnings: 1, // 1 or 2
-    battingTeam: '', // 'team1' or 'team2'
-    bowlingTeam: '', // 'team1' or 'team2'
-    
-    // Toss state
-    tossCallingTeam: '', // 'team1' or 'team2'
-    tossCall: '', // 'heads' or 'tails'
-    tossResult: '', // 'heads' or 'tails'
-    tossWinner: '', // 'team1' or 'team2'
-    
-    // Current ball
-    selectedRuns: null,
-    
-    // Match status
-    matchEnded: false
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const state = {
+  team1: { name: '', runs: 0, wickets: 0, balls: 0, extras: 0, ballHistory: [] },
+  team2: { name: '', runs: 0, wickets: 0, balls: 0, extras: 0, ballHistory: [] },
+  oversPerInnings: 0,
+  totalBalls: 0,
+  currentInnings: 1,
+  battingTeam: '',   // 'team1' | 'team2'
+  bowlingTeam: '',
+  tossCallingTeam: '',
+  tossWinner: '',
+  tossCall: '',
+  tossResult: '',
+  selectedRuns: null,
+  deliveryType: 'normal', // 'normal' | 'wide' | 'noball'
+  wicketChecked: false,
+  matchEnded: false
 };
 
-// ===========================
-// DOM ELEMENTS
-// Get references to all HTML elements
-// ===========================
-const screens = {
-    setup: document.getElementById('setupScreen'),
-    toss: document.getElementById('tossScreen'),
-    liveMatch: document.getElementById('liveMatchScreen'),
-    result: document.getElementById('resultScreen')
-};
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const screens = ['setupScreen', 'tossScreen', 'liveScreen', 'resultScreen'];
 
-// ===========================
-// UTILITY FUNCTIONS
-// ===========================
+function showScreen(name) {
+  screens.forEach(s => document.getElementById(s).classList.remove('active'));
+  $(name).classList.add('active');
+}
 
-/**
- * Switch between different screens
- * @param {string} screenName - Name of the screen to display
- */
-function switchScreen(screenName) {
-    Object.values(screens).forEach(screen => {
-        screen.classList.remove('active');
+function toOvers(balls) {
+  return `${Math.floor(balls / 6)}.${balls % 6}`;
+}
+
+function remainingBalls(balls) {
+  return state.totalBalls - balls;
+}
+
+function bat() {
+  return state[state.battingTeam];
+}
+
+// ═══════════════════════════════════════════════
+// SETUP SCREEN
+// ═══════════════════════════════════════════════
+$('startMatchBtn').addEventListener('click', () => {
+  const n1 = $('team1Name').value.trim();
+  const n2 = $('team2Name').value.trim();
+  const ov = parseInt($('oversPerInnings').value);
+
+  if (!n1) return alert('Please enter Team 1 name');
+  if (!n2) return alert('Please enter Team 2 name');
+  if (!ov || ov < 1) return alert('Please enter a valid number of overs');
+
+  state.team1.name = n1;
+  state.team2.name = n2;
+  state.oversPerInnings = ov;
+  state.totalBalls = ov * 6;
+
+  $('tossT1Name').textContent = n1;
+  $('tossT2Name').textContent = n2;
+  showScreen('tossScreen');
+});
+
+// ═══════════════════════════════════════════════
+// TOSS SCREEN — Step 1: Select calling team
+// ═══════════════════════════════════════════════
+function selectTossTeam(t) {
+  state.tossCallingTeam = t;
+  $('tossTeamSel').classList.add('hidden');
+  $('callingName').textContent = state[t].name;
+  $('tossCallSel').classList.remove('hidden');
+}
+
+$('selT1').addEventListener('click', () => selectTossTeam('team1'));
+$('selT2').addEventListener('click', () => selectTossTeam('team2'));
+
+// ═══════════════════════════════════════════════
+// TOSS SCREEN — Step 2: Heads or Tails call
+// ═══════════════════════════════════════════════
+function doCall(call) {
+  state.tossCall = call;
+  state.tossResult = Math.random() < 0.5 ? 'heads' : 'tails';
+  state.tossWinner = state.tossCall === state.tossResult
+    ? state.tossCallingTeam
+    : (state.tossCallingTeam === 'team1' ? 'team2' : 'team1');
+
+  // Show coin flip overlay
+  const overlay = $('coinOverlay');
+  const coinEl  = $('coin');
+
+  // Reset state
+  overlay.classList.remove('show-result');
+  coinEl.className = 'coin';
+  $('flipMsg').style.display = 'block';
+  overlay.classList.add('active');
+
+  // Trigger flip animation after brief delay
+  setTimeout(() => {
+    coinEl.classList.add(state.tossResult === 'heads' ? 'result-heads' : 'result-tails');
+  }, 100);
+
+  // After flip completes, reveal result
+  setTimeout(() => {
+    const winner = state[state.tossWinner].name;
+    const res = state.tossResult.charAt(0).toUpperCase() + state.tossResult.slice(1);
+    $('flipMsg').style.display = 'none';
+    $('coinResultLabel').textContent = `It's ${res}!`;
+    $('coinResultSub').textContent = `${winner} won the toss!`;
+    overlay.classList.add('show-result');
+  }, 2200);
+}
+
+$('callHeads').addEventListener('click', () => doCall('heads'));
+$('callTails').addEventListener('click', () => doCall('tails'));
+
+// ═══════════════════════════════════════════════
+// COIN OVERLAY — Continue button
+// ═══════════════════════════════════════════════
+$('coinContinueBtn').addEventListener('click', () => {
+  const overlay = $('coinOverlay');
+  overlay.classList.remove('active', 'show-result');
+
+  const winner = state[state.tossWinner].name;
+  const res = state.tossResult.charAt(0).toUpperCase() + state.tossResult.slice(1);
+
+  $('tossOutcomeText').textContent = `It's ${res}!`;
+  $('tossWinnerText').textContent = `${winner} won the toss!`;
+  $('tossWinnerChooseName').textContent = winner;
+  $('tossCallSel').classList.add('hidden');
+  $('tossResult').classList.remove('hidden');
+});
+
+// ═══════════════════════════════════════════════
+// TOSS SCREEN — Step 3: Bat or Bowl choice
+// ═══════════════════════════════════════════════
+$('chooseBat').addEventListener('click', () => {
+  state.battingTeam = state.tossWinner;
+  state.bowlingTeam = state.tossWinner === 'team1' ? 'team2' : 'team1';
+  startLive();
+});
+
+$('chooseBowl').addEventListener('click', () => {
+  state.bowlingTeam = state.tossWinner;
+  state.battingTeam = state.tossWinner === 'team1' ? 'team2' : 'team1';
+  startLive();
+});
+
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Start
+// ═══════════════════════════════════════════════
+function startLive() {
+  $('s1Name').textContent = state.team1.name;
+  $('s2Name').textContent = state.team2.name;
+  updateUI();
+  showScreen('liveScreen');
+}
+
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Delivery type buttons
+// ═══════════════════════════════════════════════
+['delNormal', 'delWide', 'delNoball'].forEach(id => {
+  $(id).addEventListener('click', () => {
+    state.deliveryType = $(id).dataset.type;
+
+    // Update button styles
+    ['delNormal', 'delWide', 'delNoball'].forEach(b => {
+      $(b).classList.remove('active-normal', 'active-wide', 'active-noball');
     });
-    screens[screenName].classList.add('active');
-}
+    const cls = state.deliveryType === 'normal' ? 'active-normal'
+              : state.deliveryType === 'wide'   ? 'active-wide'
+              : 'active-noball';
+    $(id).classList.add(cls);
 
-/**
- * Calculate overs from total balls
- * Returns format: "Overs.Balls" (e.g., "4.3")
- * @param {number} balls - Total number of balls
- * @returns {string} Overs in format "X.Y"
- */
-function calculateOvers(balls) {
-    const overs = Math.floor(balls / 6);
-    const remainingBalls = balls % 6;
-    return `${overs}.${remainingBalls}`;
-}
+    // Show/hide info banners
+    $('wideInfo').classList.toggle('show', state.deliveryType === 'wide');
+    $('noballInfo').classList.toggle('show', state.deliveryType === 'noball');
 
-/**
- * Calculate remaining balls for current innings
- * @param {number} currentBalls - Balls bowled so far
- * @returns {number} Remaining balls
- */
-function calculateRemainingBalls(currentBalls) {
-    return matchState.totalBalls - currentBalls;
-}
-
-// ===========================
-// SCREEN 1: SETUP HANDLERS
-// ===========================
-
-/**
- * Start match button handler
- * Validates inputs and moves to toss screen
- */
-document.getElementById('startMatchBtn').addEventListener('click', function() {
-    // Get input values
-    const team1Name = document.getElementById('team1Name').value.trim();
-    const team2Name = document.getElementById('team2Name').value.trim();
-    const overs = parseInt(document.getElementById('oversPerInnings').value);
-
-    // Validate team 1 name
-    if (!team1Name) {
-        alert('Please enter Team 1 name');
-        return;
-    }
-
-    // Validate team 2 name
-    if (!team2Name) {
-        alert('Please enter Team 2 name');
-        return;
-    }
-
-    // Validate overs
-    if (!overs || overs <= 0) {
-        alert('Please enter a valid number of overs (positive number)');
-        return;
-    }
-
-    // Save match settings
-    matchState.team1.name = team1Name;
-    matchState.team2.name = team2Name;
-    matchState.oversPerInnings = overs;
-    matchState.totalBalls = overs * 6; // 6 balls per over
-
-    // Update toss screen with team names
-    document.getElementById('tossTeam1Name').textContent = team1Name;
-    document.getElementById('tossTeam2Name').textContent = team2Name;
-
-    // Go to toss screen
-    switchScreen('toss');
-});
-
-// ===========================
-// SCREEN 2: TOSS HANDLERS
-// ===========================
-
-/**
- * Step 1: Team selection for toss call
- * Team 1 selected to call the toss
- */
-document.getElementById('selectTeam1').addEventListener('click', function() {
-    matchState.tossCallingTeam = 'team1';
-    this.classList.add('selected');
-    document.getElementById('selectTeam2').classList.remove('selected');
-    
-    // Move to call selection after a short delay
-    setTimeout(() => {
-        document.getElementById('tossTeamSelection').classList.add('hidden');
-        document.getElementById('tossCallSelection').classList.remove('hidden');
-        document.getElementById('callingTeamName').textContent = matchState.team1.name;
-    }, 300);
-});
-
-/**
- * Team 2 selected to call the toss
- */
-document.getElementById('selectTeam2').addEventListener('click', function() {
-    matchState.tossCallingTeam = 'team2';
-    this.classList.add('selected');
-    document.getElementById('selectTeam1').classList.remove('selected');
-    
-    // Move to call selection after a short delay
-    setTimeout(() => {
-        document.getElementById('tossTeamSelection').classList.add('hidden');
-        document.getElementById('tossCallSelection').classList.remove('hidden');
-        document.getElementById('callingTeamName').textContent = matchState.team2.name;
-    }, 300);
-});
-
-/**
- * Step 2: Heads or Tails call
- * Heads called
- */
-document.getElementById('callHeads').addEventListener('click', function() {
-    matchState.tossCall = 'heads';
-    performToss();
-});
-
-/**
- * Tails called
- */
-document.getElementById('callTails').addEventListener('click', function() {
-    matchState.tossCall = 'tails';
-    performToss();
-});
-
-/**
- * Perform the toss - randomly generate result
- * Determines toss winner based on call
- */
-function performToss() {
-    // Randomly generate toss result (50% chance for each)
-    const random = Math.random();
-    matchState.tossResult = random < 0.5 ? 'heads' : 'tails';
-    
-    // Determine toss winner
-    if (matchState.tossCall === matchState.tossResult) {
-        // Calling team won
-        matchState.tossWinner = matchState.tossCallingTeam;
+    // Wicket rules per delivery type
+    const wicketRow = $('wicketRow');
+    if (state.deliveryType === 'wide') {
+      wicketRow.classList.add('disabled');
+      state.wicketChecked = false;
+      wicketRow.classList.remove('checked');
+      $('wicketNote').textContent = 'Not allowed on wide';
+    } else if (state.deliveryType === 'noball') {
+      $('wicketNote').textContent = 'Run out only';
+      wicketRow.classList.remove('disabled');
     } else {
-        // Other team won
-        matchState.tossWinner = matchState.tossCallingTeam === 'team1' ? 'team2' : 'team1';
+      $('wicketNote').textContent = '';
+      wicketRow.classList.remove('disabled');
     }
-
-    // Display toss result
-    displayTossResult();
-}
-
-/**
- * Display toss result and winner
- * Shows which team won and asks them to choose bat/bowl
- */
-function displayTossResult() {
-    // Format result text (capitalize first letter)
-    const resultText = matchState.tossResult.charAt(0).toUpperCase() + matchState.tossResult.slice(1);
-    
-    // Get winner team name
-    const winnerName = matchState.tossWinner === 'team1' ? matchState.team1.name : matchState.team2.name;
-
-    // Update display
-    document.getElementById('tossOutcome').textContent = `It's ${resultText}!`;
-    document.getElementById('tossWinner').textContent = `${winnerName} won the toss!`;
-    document.getElementById('winningTeamName').textContent = winnerName;
-
-    // Hide call selection, show result
-    document.getElementById('tossCallSelection').classList.add('hidden');
-    document.getElementById('tossResultSection').classList.remove('hidden');
-}
-
-/**
- * Step 3: Toss winner chooses to bat or bowl
- * Toss winner chooses to bat first
- */
-document.getElementById('chooseBat').addEventListener('click', function() {
-    matchState.battingTeam = matchState.tossWinner;
-    matchState.bowlingTeam = matchState.tossWinner === 'team1' ? 'team2' : 'team1';
-    startMatch();
+  });
 });
 
-/**
- * Toss winner chooses to bowl first (other team bats)
- */
-document.getElementById('chooseBowl').addEventListener('click', function() {
-    matchState.bowlingTeam = matchState.tossWinner;
-    matchState.battingTeam = matchState.tossWinner === 'team1' ? 'team2' : 'team1';
-    startMatch();
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Run chips
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.run-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.run-chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+    state.selectedRuns = parseInt(chip.dataset.r);
+  });
 });
 
-// ===========================
-// SCREEN 3: LIVE MATCH
-// ===========================
-
-/**
- * Start the match after toss
- * Initialize scoreboard and move to live match screen
- */
-function startMatch() {
-    // Update team display names
-    document.getElementById('team1DisplayName').textContent = matchState.team1.name;
-    document.getElementById('team2DisplayName').textContent = matchState.team2.name;
-
-    // Update scoreboard
-    updateScoreboard();
-    
-    // Go to live match screen
-    switchScreen('liveMatch');
-}
-
-/**
- * Runs selector buttons
- * Allow user to select runs scored on a ball
- */
-const runButtons = document.querySelectorAll('.run-btn');
-runButtons.forEach(button => {
-    button.addEventListener('click', function() {
-        // Remove selected class from all buttons
-        runButtons.forEach(btn => btn.classList.remove('selected'));
-        
-        // Add selected class to clicked button
-        this.classList.add('selected');
-        
-        // Save selected runs
-        matchState.selectedRuns = parseInt(this.getAttribute('data-runs'));
-    });
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Wicket toggle
+// ═══════════════════════════════════════════════
+$('wicketRow').addEventListener('click', () => {
+  if ($('wicketRow').classList.contains('disabled')) return;
+  state.wicketChecked = !state.wicketChecked;
+  $('wicketRow').classList.toggle('checked', state.wicketChecked);
 });
 
-/**
- * Record ball button handler
- * Main function to record a ball
- */
-document.getElementById('recordBallBtn').addEventListener('click', recordBall);
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Record ball
+// ═══════════════════════════════════════════════
+$('recordBtn').addEventListener('click', recordBall);
 
-/**
- * Main function to record a ball
- * Updates scores, wickets, and ball count
- */
 function recordBall() {
-    // Validate runs selection
-    if (matchState.selectedRuns === null) {
-        alert('Please select runs scored (0-6)');
-        return;
-    }
+  if (state.selectedRuns === null) return alert('Please select runs scored');
 
-    // Get current batting team
-    const battingTeam = matchState[matchState.battingTeam];
+  const team = bat();
+  const isWide   = state.deliveryType === 'wide';
+  const isNoball = state.deliveryType === 'noball';
+  const isExtra  = isWide || isNoball;
 
-    // Check if innings should be over (all wickets down)
-    if (battingTeam.wickets >= 10) {
-        alert('All out! Innings is over. Click "End Innings"');
-        return;
-    }
+  // 1 penalty run for wide or no ball, plus any runs scored off bat
+  const penaltyRun = isExtra ? 1 : 0;
+  const totalRuns  = state.selectedRuns + penaltyRun;
 
-    // Check if innings should be over (overs completed)
-    if (battingTeam.balls >= matchState.totalBalls) {
-        alert('Overs completed! Innings is over. Click "End Innings"');
-        return;
-    }
+  // Wide and no-ball deliveries do NOT count toward the over
+  const countsAsBall = !isExtra;
 
-    // Get wicket status
-    const isWicket = document.getElementById('wicketCheck').checked;
+  // Wicket not allowed on a wide
+  const isWicket = state.wicketChecked && !isWide;
 
-    // Update batting team stats
-    battingTeam.runs += matchState.selectedRuns;
-    battingTeam.balls += 1;
+  // Update team stats
+  team.runs    += totalRuns;
+  team.extras  += penaltyRun;
+  if (isWicket)      team.wickets += 1;
+  if (countsAsBall)  team.balls   += 1;
 
-    if (isWicket) {
-        battingTeam.wickets += 1;
-    }
+  // Build ball label + class for history display
+  let ballLabel, ballClass;
+  if (isWide) {
+    ballLabel = state.selectedRuns > 0 ? `Wd+${state.selectedRuns}` : 'Wd';
+    ballClass = 'wide';
+  } else if (isNoball) {
+    ballLabel = state.selectedRuns > 0 ? `NB+${state.selectedRuns}` : 'NB';
+    ballClass = 'noball';
+  } else if (isWicket) {
+    ballLabel = state.selectedRuns > 0 ? `W+${state.selectedRuns}` : 'W';
+    ballClass = 'wicket';
+  } else if (state.selectedRuns === 0) {
+    ballLabel = '•';
+    ballClass = 'dot';
+  } else if (state.selectedRuns === 6) {
+    ballLabel = '6';
+    ballClass = 'six';
+  } else if (state.selectedRuns === 4) {
+    ballLabel = '4';
+    ballClass = 'four';
+  } else {
+    ballLabel = String(state.selectedRuns);
+    ballClass = 'runs';
+  }
 
-    // Add to ball history
-    battingTeam.ballHistory.push({
-        runs: matchState.selectedRuns,
-        isWicket: isWicket
-    });
+  team.ballHistory.push({ label: ballLabel, cls: ballClass, countsAsBall });
 
-    // Reset inputs
-    runButtons.forEach(btn => btn.classList.remove('selected'));
-    matchState.selectedRuns = null;
-    document.getElementById('wicketCheck').checked = false;
+  // Reset inputs
+  document.querySelectorAll('.run-chip').forEach(c => c.classList.remove('selected'));
+  state.selectedRuns  = null;
+  state.wicketChecked = false;
+  $('wicketRow').classList.remove('checked');
 
-    // Update UI
-    updateScoreboard();
-    updateBallHistory();
+  // Reset delivery type back to Normal
+  state.deliveryType = 'normal';
+  ['delNormal', 'delWide', 'delNoball'].forEach(b => $(b).classList.remove('active-normal', 'active-wide', 'active-noball'));
+  $('delNormal').classList.add('active-normal');
+  $('wideInfo').classList.remove('show');
+  $('noballInfo').classList.remove('show');
+  $('wicketRow').classList.remove('disabled');
+  $('wicketNote').textContent = '';
 
-    // Check innings end conditions
-    checkInningsEnd();
+  updateUI();
 
-    // Check match end (second innings only)
-    if (matchState.currentInnings === 2) {
-        checkMatchEnd();
-    }
+  if (checkInningsEnd()) return;
+  if (state.currentInnings === 2) checkMatchEnd();
 }
 
-/**
- * Update scoreboard display
- * Updates all score, overs, balls, and remaining stats
- */
-function updateScoreboard() {
-    // Update Team 1 display
-    document.getElementById('team1Runs').textContent = `${matchState.team1.runs}/${matchState.team1.wickets}`;
-    document.getElementById('team1Overs').textContent = calculateOvers(matchState.team1.balls);
-    document.getElementById('team1Balls').textContent = matchState.team1.balls;
-    
-    // Show remaining balls only for batting team
-    if (matchState.battingTeam === 'team1') {
-        document.getElementById('team1Remaining').textContent = calculateRemainingBalls(matchState.team1.balls);
-    } else {
-        document.getElementById('team1Remaining').textContent = '-';
-    }
-
-    // Update Team 2 display
-    document.getElementById('team2Runs').textContent = `${matchState.team2.runs}/${matchState.team2.wickets}`;
-    document.getElementById('team2Overs').textContent = calculateOvers(matchState.team2.balls);
-    document.getElementById('team2Balls').textContent = matchState.team2.balls;
-    
-    // Show remaining balls only for batting team
-    if (matchState.battingTeam === 'team2') {
-        document.getElementById('team2Remaining').textContent = calculateRemainingBalls(matchState.team2.balls);
-    } else {
-        document.getElementById('team2Remaining').textContent = '-';
-    }
-
-    // Update batting badges
-    if (matchState.battingTeam === 'team1') {
-        document.getElementById('team1Badge').classList.remove('hidden');
-        document.getElementById('team2Badge').classList.add('hidden');
-        document.getElementById('team1Score').classList.add('batting');
-        document.getElementById('team2Score').classList.remove('batting');
-    } else {
-        document.getElementById('team1Badge').classList.add('hidden');
-        document.getElementById('team2Badge').classList.remove('hidden');
-        document.getElementById('team1Score').classList.remove('batting');
-        document.getElementById('team2Score').classList.add('batting');
-    }
-
-    // Update innings info and target
-    if (matchState.currentInnings === 1) {
-        // First innings
-        document.getElementById('inningsInfo').textContent = 'First Innings';
-        document.getElementById('targetDisplay').classList.add('hidden');
-    } else {
-        // Second innings - show target
-        document.getElementById('inningsInfo').textContent = 'Second Innings - Chase';
-        
-        const defendingTeam = matchState.battingTeam === 'team1' ? matchState.team2 : matchState.team1;
-        const target = defendingTeam.runs + 1;
-        const remainingBalls = matchState.totalBalls - matchState[matchState.battingTeam].balls;
-        
-        document.getElementById('targetRuns').textContent = target;
-        document.getElementById('targetBalls').textContent = remainingBalls;
-        document.getElementById('targetDisplay').classList.remove('hidden');
-    }
-
-    // Update progress bar
-    const currentTeam = matchState[matchState.battingTeam];
-    const progress = (currentTeam.balls / matchState.totalBalls) * 100;
-    document.getElementById('progressFill').style.width = `${progress}%`;
-}
-
-/**
- * Update ball history for current over
- * Shows last 6 balls (current over)
- */
-function updateBallHistory() {
-    const battingTeam = matchState[matchState.battingTeam];
-    const currentOver = battingTeam.ballHistory.slice(-6); // Last 6 balls
-
-    // Clear container
-    const container = document.getElementById('ballsContainer');
-    container.innerHTML = '';
-
-    // If no balls bowled yet
-    if (currentOver.length === 0) {
-        container.innerHTML = '<span class="empty-balls">No balls bowled yet</span>';
-        return;
-    }
-
-    // Create ball elements
-    currentOver.forEach(ball => {
-        const ballDiv = document.createElement('div');
-        ballDiv.classList.add('ball');
-
-        if (ball.isWicket) {
-            // Wicket ball
-            ballDiv.classList.add('wicket');
-            ballDiv.textContent = 'W';
-        } else if (ball.runs === 0) {
-            // Dot ball
-            ballDiv.classList.add('dot');
-            ballDiv.textContent = '•';
-        } else {
-            // Runs scored
-            ballDiv.classList.add('runs');
-            ballDiv.textContent = ball.runs;
-        }
-
-        container.appendChild(ballDiv);
-    });
-}
-
-/**
- * Check if innings should end
- * Checks for all out or overs completed
- * @returns {boolean} True if innings should end
- */
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Innings end check
+// ═══════════════════════════════════════════════
 function checkInningsEnd() {
-    const battingTeam = matchState[matchState.battingTeam];
-
-    // Check if all wickets down
-    if (battingTeam.wickets >= 10) {
-        alert(`${battingTeam.name} is all out! Click "End Innings" to continue.`);
-        document.getElementById('recordBallBtn').disabled = true;
-        return true;
-    }
-
-    // Check if overs completed
-    if (battingTeam.balls >= matchState.totalBalls) {
-        alert(`Overs completed! Click "End Innings" to continue.`);
-        document.getElementById('recordBallBtn').disabled = true;
-        return true;
-    }
-
-    return false;
+  const team = bat();
+  if (team.wickets >= 10) {
+    $('recordBtn').disabled = true;
+    showToast(`${team.name} all out! End the innings to continue.`);
+    return true;
+  }
+  if (team.balls >= state.totalBalls) {
+    $('recordBtn').disabled = true;
+    showToast('Overs complete! End the innings to continue.');
+    return true;
+  }
+  return false;
 }
 
-/**
- * End innings button handler
- * Switches innings or ends match
- */
-document.getElementById('endInningsBtn').addEventListener('click', function() {
-    if (matchState.currentInnings === 1) {
-        // Switch to second innings
-        matchState.currentInnings = 2;
-        matchState.battingTeam = matchState.battingTeam === 'team1' ? 'team2' : 'team1';
-        matchState.bowlingTeam = matchState.bowlingTeam === 'team1' ? 'team2' : 'team1';
-
-        // Enable record button
-        document.getElementById('recordBallBtn').disabled = false;
-
-        // Update UI
-        updateScoreboard();
-        updateBallHistory();
-
-        const battingTeamName = matchState[matchState.battingTeam].name;
-        alert(`Second innings starts! ${battingTeamName} is batting now.`);
-    } else {
-        // Match ends
-        showMatchResult();
-    }
-});
-
-/**
- * Check if match should end (second innings)
- * Checks if chasing team has won
- */
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Match end check (2nd innings)
+// ═══════════════════════════════════════════════
 function checkMatchEnd() {
-    const chasingTeam = matchState[matchState.battingTeam];
-    const defendingTeam = matchState.battingTeam === 'team1' ? matchState.team2 : matchState.team1;
-
-    // Check if chasing team has won (exceeded target)
-    if (chasingTeam.runs > defendingTeam.runs) {
-        matchState.matchEnded = true;
-        showMatchResult();
-    }
+  const chasers   = bat();
+  const defenders = state.battingTeam === 'team1' ? state.team2 : state.team1;
+  if (chasers.runs > defenders.runs) {
+    showResult();
+  }
 }
 
-/**
- * Calculate and display match result
- * Determines winner and shows result screen
- */
-function showMatchResult() {
-    matchState.matchEnded = true;
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Update all UI elements
+// ═══════════════════════════════════════════════
+function updateUI() {
+  // Scores
+  $('s1Score').textContent  = `${state.team1.runs}/${state.team1.wickets}`;
+  $('s2Score').textContent  = `${state.team2.runs}/${state.team2.wickets}`;
+  $('s1Overs').textContent  = toOvers(state.team1.balls);
+  $('s2Overs').textContent  = toOvers(state.team2.balls);
+  $('s1Extras').textContent = state.team1.extras;
+  $('s2Extras').textContent = state.team2.extras;
 
-    const team1 = matchState.team1;
-    const team2 = matchState.team2;
+  // Remaining balls
+  if (state.battingTeam === 'team1') {
+    $('s1Remaining').textContent = remainingBalls(state.team1.balls);
+    $('s2Remaining').textContent = '—';
+  } else {
+    $('s2Remaining').textContent = remainingBalls(state.team2.balls);
+    $('s1Remaining').textContent = '—';
+  }
 
-    let winnerText = '';
-    let matchSummaryHtml = '';
+  // Batting card highlight
+  $('scoreCard1').classList.toggle('batting', state.battingTeam === 'team1');
+  $('scoreCard2').classList.toggle('batting', state.battingTeam === 'team2');
 
-    // Determine winner
-    if (team1.runs > team2.runs) {
-        // Team 1 won
-        const margin = team1.runs - team2.runs;
-        winnerText = `${team1.name} won by ${margin} run${margin > 1 ? 's' : ''}!`;
-    } else if (team2.runs > team1.runs) {
-        // Team 2 won
-        const wicketsRemaining = 10 - team2.wickets;
-        winnerText = `${team2.name} won by ${wicketsRemaining} wicket${wicketsRemaining > 1 ? 's' : ''}!`;
-    } else {
-        // Match tied
-        winnerText = 'Match Tied!';
-    }
+  // Innings label & target strip
+  if (state.currentInnings === 1) {
+    $('inningsBadge').textContent = 'First Innings';
+    $('targetStrip').classList.remove('show');
+  } else {
+    $('inningsBadge').textContent = 'Second Innings — Chase';
+    const def      = state.battingTeam === 'team1' ? state.team2 : state.team1;
+    const chas     = bat();
+    const runsNeed = (def.runs + 1) - chas.runs;
+    const ballsLeft = remainingBalls(chas.balls);
+    $('tgtRuns').textContent  = runsNeed > 0 ? runsNeed : 0;
+    $('tgtBalls').textContent = ballsLeft;
+    $('targetStrip').classList.add('show');
+  }
 
-    // Create match summary
-    matchSummaryHtml = `
-        <strong>${team1.name}:</strong> ${team1.runs}/${team1.wickets} 
-        (${calculateOvers(team1.balls)} overs)<br><br>
-        <strong>${team2.name}:</strong> ${team2.runs}/${team2.wickets} 
-        (${calculateOvers(team2.balls)} overs)
-    `;
+  // Progress bar (based on legal balls bowled)
+  const team = bat();
+  $('overFill').style.width = Math.min(100, (team.balls / state.totalBalls) * 100) + '%';
 
-    // Update result screen
-    document.getElementById('winnerText').textContent = winnerText;
-    document.getElementById('matchSummary').innerHTML = matchSummaryHtml;
+  // Ball history — show last 8 deliveries
+  const container = $('ballsRow');
+  container.innerHTML = '';
+  const recent = team.ballHistory.slice(-8);
 
-    // Show result screen
-    switchScreen('result');
+  if (recent.length === 0) {
+    container.innerHTML = '<span class="no-balls-msg">No balls bowled yet</span>';
+  } else {
+    recent.forEach(b => {
+      const el = document.createElement('div');
+      el.className = `ball-chip ${b.cls}`;
+      el.textContent = b.label;
+      container.appendChild(el);
+    });
+  }
 }
 
-/**
- * Reset match button handler
- * Reloads the page to start fresh
- */
-document.getElementById('resetMatchBtn').addEventListener('click', function() {
-    if (confirm('Are you sure you want to reset the match? All progress will be lost.')) {
-        location.reload();
-    }
+// ═══════════════════════════════════════════════
+// LIVE MATCH — End innings button
+// ═══════════════════════════════════════════════
+$('endInningsBtn').addEventListener('click', () => {
+  if (state.currentInnings === 1) {
+    // Switch to second innings
+    state.currentInnings = 2;
+    const tmp = state.battingTeam;
+    state.battingTeam = state.bowlingTeam;
+    state.bowlingTeam = tmp;
+    $('recordBtn').disabled = false;
+    updateUI();
+    showToast(`${bat().name} innings begins!`);
+  } else {
+    showResult();
+  }
 });
 
-/**
- * New match button handler (on result screen)
- * Reloads the page to start a new match
- */
-document.getElementById('newMatchBtn').addEventListener('click', function() {
-    location.reload();
+// ═══════════════════════════════════════════════
+// LIVE MATCH — Reset
+// ═══════════════════════════════════════════════
+$('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset the match? All data will be lost.')) location.reload();
 });
+
+// ═══════════════════════════════════════════════
+// RESULT SCREEN
+// ═══════════════════════════════════════════════
+function showResult() {
+  state.matchEnded = true;
+  const t1 = state.team1;
+  const t2 = state.team2;
+  let winnerText;
+
+  if (t1.runs > t2.runs) {
+    const margin = t1.runs - t2.runs;
+    winnerText = `${t1.name} won by ${margin} run${margin !== 1 ? 's' : ''}!`;
+  } else if (t2.runs > t1.runs) {
+    const wkts = 10 - t2.wickets;
+    winnerText = `${t2.name} won by ${wkts} wicket${wkts !== 1 ? 's' : ''}!`;
+  } else {
+    winnerText = 'Match Tied!';
+  }
+
+  $('resultWinner').textContent = winnerText;
+
+  $('rc1Name').textContent   = t1.name;
+  $('rc1Score').textContent  = `${t1.runs}/${t1.wickets}`;
+  $('rc1Detail').textContent = `${toOvers(t1.balls)} overs · ${t1.extras} extras`;
+
+  $('rc2Name').textContent   = t2.name;
+  $('rc2Score').textContent  = `${t2.runs}/${t2.wickets}`;
+  $('rc2Detail').textContent = `${toOvers(t2.balls)} overs · ${t2.extras} extras`;
+
+  showScreen('resultScreen');
+}
+
+$('newMatchBtn').addEventListener('click', () => location.reload());
+
+// ═══════════════════════════════════════════════
+// TOAST NOTIFICATION
+// ═══════════════════════════════════════════════
+function showToast(msg) {
+  let t = document.querySelector('.toast');
+  if (t) t.remove();
+
+  t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  t.style.cssText = `
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(232,184,75,0.15);
+    border: 1px solid rgba(232,184,75,0.4);
+    color: #e8b84b;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    animation: toastIn 0.3s ease both;
+    white-space: nowrap;
+  `;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
