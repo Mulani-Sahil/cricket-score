@@ -839,3 +839,13 @@ body::after {
   .runs-grid { grid-template-columns: repeat(4, 1fr); }
   .delivery-row { grid-template-columns: 1fr 1fr 1fr; }
 }
+
+/* ===========================
+   FIELD HINT
+=========================== */
+.field-hint {
+  font-size: 0.72rem;
+  color: var(--gray);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
